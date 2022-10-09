@@ -15,6 +15,7 @@ func main() {
 		log.Fatalf("Error occured loading environment variables: %s", err)
 	}
 	r := mux.NewRouter()
+	os.RemoveAll(os.Getenv("COMPILE_DIR"))
 	r.HandleFunc("/compile", compileHandler)
 	err = http.ListenAndServe(os.Getenv("HOST")+":"+os.Getenv("PORT"), r)
 	log.Println("Server connection failed")
