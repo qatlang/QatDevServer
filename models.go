@@ -1,5 +1,40 @@
 package main
 
+import "go.mongodb.org/mongo-driver/mongo"
+
+type Collections struct {
+	Updates  *mongo.Collection
+	Releases *mongo.Collection
+}
+
+type ReleaseVersionInfo struct {
+	Value        string `json:"value"`
+	IsPrerelease string `json:"isPrerelease"`
+	Prerelease   string `json:"prerelease"`
+}
+
+type ReleaseArtefact struct {
+	Platform     string `json:"platform"`
+	Architecture string `json:"architecture"`
+	Path         string `json:"path"`
+}
+
+type LanguageRelease struct {
+	Version   ReleaseVersionInfo `json:"version"`
+	Title     string             `json:"title"`
+	Content   string             `json:"content"`
+	Files     []ReleaseArtefact  `json:"files"`
+	Index     int                `json:"index"`
+	CreatedAt string             `json:"createdAt"`
+}
+
+type LanguageUpdate struct {
+	Content   string `json:"content"`
+	Title     string `json:"title"`
+	CreatedAt string `json:"createdAt"`
+	Index     int    `json:"index"`
+}
+
 type NewCompileFile struct {
 	Content string `json:"content"`
 	Time    string `json:"time"`
