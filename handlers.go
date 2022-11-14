@@ -1,15 +1,78 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"io/fs"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"path"
 
 	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson"
 )
+
+func releaseListHandler(collections *Collections) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			{
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Access-Control-Allow-Origin", os.Getenv("ALLOWED_ORIGIN"))
+				w.Header().Set("Access-Control-Max-Age", "15")
+				cur, err := collections.Releases.Find(context.TODO(), bson.M{})
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					statusData, err := json.Marshal(ReleasesListStatusFail{"Unable to find releases"})
+					if err == nil {
+						w.Write(statusData)
+					}
+				}
+				var result struct {
+					Releases []LanguageRelease `json:"releases"`
+				}
+				for cur.Next(context.TODO()) {
+					var item bson.D
+					if err := cur.Decode(&item); err != nil {
+						log.Println("Error while decoding bson: ", err)
+						continue
+					}
+					itemBytes, err := bson.Marshal(item)
+					if err != nil {
+						log.Println("Error converting item to json: ", err)
+						continue
+					}
+					var rlsItem LanguageRelease
+					bson.Unmarshal(itemBytes, &rlsItem)
+					result.Releases = append(result.Releases, rlsItem)
+				}
+				resultBytes, err := json.Marshal(result)
+				if err != nil {
+					log.Println("Error while converting result to json: ", err)
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				w.Write(resultBytes)
+				w.WriteHeader(http.StatusOK)
+				break
+			}
+		default:
+			{
+				w.WriteHeader(http.StatusNotFound)
+				var status ReleasesListStatusFail
+				status.Status = "Invalid request"
+				statusBytes, err := json.Marshal(status)
+				if err != nil {
+					return
+				}
+				w.Write([]byte(statusBytes))
+				break
+			}
+		}
+	}
+}
 
 func compileHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
