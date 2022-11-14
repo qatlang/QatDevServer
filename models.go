@@ -7,25 +7,21 @@ type Collections struct {
 	Releases *mongo.Collection
 }
 
-type ReleaseVersionInfo struct {
-	Value        string `json:"value"`
-	IsPrerelease string `json:"isPrerelease"`
-	Prerelease   string `json:"prerelease"`
-}
-
-type ReleaseArtefact struct {
-	Platform     string `json:"platform"`
-	Architecture string `json:"architecture"`
-	Path         string `json:"path"`
-}
-
 type LanguageRelease struct {
-	Version   ReleaseVersionInfo `json:"version"`
-	Title     string             `json:"title"`
-	Content   string             `json:"content"`
-	Files     []ReleaseArtefact  `json:"files"`
-	Index     int                `json:"index"`
-	CreatedAt string             `json:"createdAt"`
+	Version struct {
+		Value        string `json:"value"`
+		IsPrerelease bool   `json:"isPrerelease"`
+		Prerelease   string `json:"prerelease"`
+	} `json:"version"`
+	Title   string `json:"title"`
+	Content string `json:"content"`
+	Files   []struct {
+		Platform     string `json:"platform"`
+		Architecture string `json:"architecture"`
+		Path         string `json:"path"`
+	} `json:"files"`
+	Index     int    `json:"index"`
+	CreatedAt string `json:"createdAt"`
 }
 
 type LanguageUpdate struct {
@@ -66,5 +62,9 @@ type SystemCompileResult struct {
 }
 
 type CompileStatusFail struct {
+	Status string `json:"status"`
+}
+
+type ReleasesListStatusFail struct {
 	Status string `json:"status"`
 }
