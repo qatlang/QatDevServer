@@ -10,7 +10,12 @@ import (
 )
 
 func main() {
-	err := godotenv.Load(".env")
+	var err error
+	if len(os.Args) < 2 {
+		err = godotenv.Load(".env")
+	} else {
+		err = godotenv.Load(os.Args[1])
+	}
 	if err != nil {
 		log.Fatalf("Error occured loading environment variables: %s", err)
 	}
