@@ -54,8 +54,8 @@ func releaseListHandler(collections *Collections) http.HandlerFunc {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
-				w.Write(resultBytes)
 				w.WriteHeader(http.StatusOK)
+				w.Write(resultBytes)
 				break
 			}
 		default:
@@ -86,9 +86,18 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 			uniq, err := uuid.NewUUID()
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
+				status, err := json.Marshal(CompileStatusFail{"Cannot get UUID directory"})
+				if err != nil {
+					w.Write(status)
+				}
 				return
 			}
-			dir := path.Join(os.Getenv("COMPILE_DIR"), uniq.String())
+			var dir string
+			if len(os.Args) != 0 {
+				dir = path.Join(os.Args[1], os.Getenv("COMPILE_DIR"), uniq.String())
+			} else {
+				dir = path.Join(os.Getenv("COMPILE_DIR"), uniq.String())
+			}
 			buildDir := path.Join(dir, "build")
 			mainFile := path.Join(dir, "main.qat")
 			err = os.MkdirAll(buildDir, fs.ModeDir)
@@ -159,6 +168,11 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			} else {
 				w.WriteHeader(http.StatusInternalServerError)
+				status, err := json.Marshal(CompileStatusFail{"Converting result failed"})
+				if err != nil {
+					w.Write(status)
+				}
+
 			}
 			break
 		}

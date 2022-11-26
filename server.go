@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -14,7 +15,7 @@ func main() {
 	if len(os.Args) < 2 {
 		err = godotenv.Load(".env")
 	} else {
-		err = godotenv.Load(os.Args[1])
+		err = godotenv.Load(path.Join(os.Args[1], ".env"))
 	}
 	if err != nil {
 		log.Fatalf("Error occured loading environment variables: %s", err)
@@ -22,7 +23,11 @@ func main() {
 	r := mux.NewRouter()
 	var collections Collections
 	ConnectDB(&collections)
-	os.RemoveAll(os.Getenv("COMPILE_DIR"))
+	if len(os.Args) != 2 {
+		os.RemoveAll(os.Getenv("COMPILE_DIR"))
+	} else {
+		os.RemoveAll(path.Join(os.Args[1], os.Getenv("COMPILE_DIR")))
+	}
 	r.HandleFunc("/compile", compileHandler)
 	r.HandleFunc("/releases", releaseListHandler(&collections))
 	err = http.ListenAndServe(os.Getenv("HOST")+":"+os.Getenv("PORT"), r)
