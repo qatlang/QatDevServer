@@ -33,8 +33,9 @@ type LanguageUpdate struct {
 }
 
 type NewCompileFile struct {
-	Content string `json:"content"`
-	Time    string `json:"time"`
+	ConfirmationKey string `json:"confirmationKey"`
+	Content         string `json:"content"`
+	Time            string `json:"time"`
 }
 
 type FilePos struct {
