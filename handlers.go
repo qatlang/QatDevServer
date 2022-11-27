@@ -25,7 +25,7 @@ func releaseListHandler(collections *Collections) http.HandlerFunc {
 				cur, err := collections.Releases.Find(context.TODO(), bson.M{})
 				if err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
-					statusData, err := json.Marshal(ReleasesListStatusFail{"Unable to find releases"})
+					statusData, err := json.Marshal(StatusFail{"Unable to find releases"})
 					if err == nil {
 						w.Write(statusData)
 					}
@@ -61,17 +61,21 @@ func releaseListHandler(collections *Collections) http.HandlerFunc {
 		default:
 			{
 				w.WriteHeader(http.StatusNotFound)
-				var status ReleasesListStatusFail
+				var status StatusFail
 				status.Status = "Invalid request"
 				statusBytes, err := json.Marshal(status)
 				if err != nil {
 					return
 				}
-				w.Write([]byte(statusBytes))
+				w.Write(statusBytes)
 				break
 			}
 		}
 	}
+}
+
+func writingStatusFailed(message string) {
+	log.Println("WRITING STATUS FAILED :: " + message)
 }
 
 func compileHandler(w http.ResponseWriter, r *http.Request) {
@@ -83,29 +87,49 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Access-Control-Max-Age", "15")
 			var qatFile NewCompileFile
 			json.NewDecoder(r.Body).Decode(&qatFile)
+			if qatFile.ConfirmationKey != os.Getenv("CONFIRMATION_KEY") {
+				w.WriteHeader(http.StatusNotAcceptable)
+				message := "Source not confirmed"
+				status, err := json.Marshal(StatusFail{message})
+				if err == nil {
+					log.Println(message)
+					w.Write(status)
+				} else {
+					writingStatusFailed(message)
+				}
+				return
+			}
 			uniq, err := uuid.NewUUID()
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				status, err := json.Marshal(CompileStatusFail{"Cannot get UUID directory"})
-				if err != nil {
+				message := "Cannot get UUID directory"
+				status, err := json.Marshal(StatusFail{message})
+				if err == nil {
+					log.Println(message)
 					w.Write(status)
+				} else {
+					writingStatusFailed(message)
 				}
 				return
 			}
 			var dir string
-			if len(os.Args) != 0 {
-				dir = path.Join(os.Args[1], os.Getenv("COMPILE_DIR"), uniq.String())
-			} else {
+			if len(os.Args) != 2 {
 				dir = path.Join(os.Getenv("COMPILE_DIR"), uniq.String())
+			} else {
+				dir = path.Join(os.Args[1], os.Getenv("COMPILE_DIR"), uniq.String())
 			}
 			buildDir := path.Join(dir, "build")
 			mainFile := path.Join(dir, "main.qat")
 			err = os.MkdirAll(buildDir, fs.ModeDir)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				status, err := json.Marshal(CompileStatusFail{"Cannot create build directory"})
-				if err != nil {
+				message := "Cannot create build directory"
+				status, err := json.Marshal(StatusFail{message})
+				if err == nil {
+					log.Println(message)
 					w.Write(status)
+				} else {
+					writingStatusFailed(message)
 				}
 				os.RemoveAll(dir)
 				return
@@ -113,20 +137,28 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 			err = os.WriteFile(mainFile, []byte(qatFile.Content), fs.ModeAppend)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				status, err := json.Marshal(CompileStatusFail{"Cannot write contents of file to compile"})
-				if err != nil {
+				message := "Cannot write contents to file for compile"
+				status, err := json.Marshal(StatusFail{message})
+				if err == nil {
+					log.Println(message)
 					w.Write(status)
+				} else {
+					writingStatusFailed(message)
 				}
 				os.RemoveAll(dir)
 				return
 			}
-			cmd := exec.Command("qat", "run", mainFile, "-o", buildDir, "--no-colors")
+			cmd := exec.Command("qat", "build", mainFile, "-o", buildDir, "--no-colors")
 			err = cmd.Run()
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				status, err := json.Marshal(CompileStatusFail{"Running compiler failed: " + err.Error()})
-				if err != nil {
+				message := "Running compiler failed: " + err.Error()
+				status, err := json.Marshal(StatusFail{message})
+				if err == nil {
+					log.Println(message)
 					w.Write(status)
+				} else {
+					writingStatusFailed(message)
 				}
 				os.RemoveAll(dir)
 				return
@@ -134,9 +166,13 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 			_, err = os.Stat(path.Join(dir, "build", "qat_result.json"))
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				status, err := json.Marshal(CompileStatusFail{"Result file does not exist"})
-				if err != nil {
+				message := "Result file does not exist"
+				status, err := json.Marshal(StatusFail{message})
+				if err == nil {
+					log.Println(message)
 					w.Write(status)
+				} else {
+					writingStatusFailed(message)
 				}
 				os.RemoveAll(dir)
 				return
@@ -144,9 +180,13 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 			resContent, err := os.ReadFile(path.Join(dir, "build", "qat_result.json"))
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				status, err := json.Marshal(CompileStatusFail{"Reading result file failed"})
-				if err != nil {
+				message := "Reading result file failed"
+				status, err := json.Marshal(StatusFail{message})
+				if err == nil {
+					log.Println(message)
 					w.Write(status)
+				} else {
+					writingStatusFailed(message)
 				}
 				os.RemoveAll(dir)
 				return
@@ -155,26 +195,34 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 			err = json.Unmarshal(resContent, &sysCompRes)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				status, err := json.Marshal(CompileStatusFail{"Parsing result file failed"})
-				if err != nil {
+				message := "Parsing result file failed"
+				status, err := json.Marshal(StatusFail{message})
+				if err == nil {
+					log.Println(message)
 					w.Write(status)
+				} else {
+					writingStatusFailed(message)
 				}
 				os.RemoveAll(dir)
 				return
 			}
 			if err == nil {
+				log.Println("Writing final result")
 				w.Write(resContent)
 				os.RemoveAll(dir)
 				return
 			} else {
 				w.WriteHeader(http.StatusInternalServerError)
-				status, err := json.Marshal(CompileStatusFail{"Converting result failed"})
-				if err != nil {
+				message := "Converting result failed"
+				status, err := json.Marshal(StatusFail{message})
+				if err == nil {
+					log.Println(message)
 					w.Write(status)
+				} else {
+					writingStatusFailed(message)
 				}
-
+				return
 			}
-			break
 		}
 	default:
 		{
