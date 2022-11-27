@@ -18,6 +18,7 @@ type LanguageRelease struct {
 	Files   []struct {
 		Platform     string `json:"platform"`
 		Architecture string `json:"architecture"`
+		Downloads    int    `json:"downloads"`
 		Path         string `json:"path"`
 	} `json:"files"`
 	Index     int    `json:"index"`
@@ -61,10 +62,6 @@ type SystemCompileResult struct {
 	HasMain   bool      `json:"hasMain"`
 }
 
-type CompileStatusFail struct {
-	Status string `json:"status"`
-}
-
-type ReleasesListStatusFail struct {
+type StatusFail struct {
 	Status string `json:"status"`
 }
