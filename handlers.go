@@ -147,7 +147,12 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 				os.RemoveAll(dir)
 				return
 			}
-			cmd := exec.Command("qat", "build", mainFile, "-o", buildDir, "--no-colors")
+			var cmd *exec.Cmd
+			if len(os.Args) >= 3 {
+				cmd = exec.Command(path.Join(os.Args[2], "qat"), "build", mainFile, "-o", buildDir, "--no-colors")
+			} else {
+				cmd = exec.Command("qat", "build", mainFile, "-o", buildDir, "--no-colors")
+			}
 			err = cmd.Run()
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
