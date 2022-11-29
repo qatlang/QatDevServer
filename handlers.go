@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -120,7 +119,7 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			buildDir := path.Join(dir, "build")
 			mainFile := path.Join(dir, "main.qat")
-			err = os.MkdirAll(buildDir, fs.ModeDir)
+			err = os.MkdirAll(buildDir, 0755)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				message := "Cannot create build directory"
@@ -134,7 +133,7 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 				os.RemoveAll(dir)
 				return
 			}
-			err = os.WriteFile(mainFile, []byte(qatFile.Content), fs.ModeAppend)
+			err = os.WriteFile(mainFile, []byte(qatFile.Content), 0755)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				message := "Cannot write contents to file for compile"
