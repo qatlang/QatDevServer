@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -24,7 +25,7 @@ func releaseListHandler(collections *Collections) http.HandlerFunc {
 				cur, err := collections.Releases.Find(context.TODO(), bson.M{})
 				if err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
-					statusData, err := json.Marshal(StatusFail{"Unable to find releases"})
+					statusData, err := json.Marshal(ResponseStatus{"Unable to find releases"})
 					if err == nil {
 						w.Write(statusData)
 					}
@@ -60,7 +61,7 @@ func releaseListHandler(collections *Collections) http.HandlerFunc {
 		default:
 			{
 				w.WriteHeader(http.StatusNotFound)
-				var status StatusFail
+				var status ResponseStatus
 				status.Status = "Invalid request"
 				statusBytes, err := json.Marshal(status)
 				if err != nil {
@@ -89,7 +90,7 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 			if qatFile.ConfirmationKey != os.Getenv("CONFIRMATION_KEY") {
 				w.WriteHeader(http.StatusNotAcceptable)
 				message := "Source not confirmed"
-				status, err := json.Marshal(StatusFail{message})
+				status, err := json.Marshal(ResponseStatus{message})
 				if err == nil {
 					log.Println(message)
 					w.Write(status)
@@ -102,7 +103,7 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				message := "Cannot get UUID directory"
-				status, err := json.Marshal(StatusFail{message})
+				status, err := json.Marshal(ResponseStatus{message})
 				if err == nil {
 					log.Println(message)
 					w.Write(status)
@@ -123,7 +124,7 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				message := "Cannot create build directory"
-				status, err := json.Marshal(StatusFail{message})
+				status, err := json.Marshal(ResponseStatus{message})
 				if err == nil {
 					log.Println(message)
 					w.Write(status)
@@ -137,7 +138,7 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				message := "Cannot write contents to file for compile"
-				status, err := json.Marshal(StatusFail{message})
+				status, err := json.Marshal(ResponseStatus{message})
 				if err == nil {
 					log.Println(message)
 					w.Write(status)
@@ -157,7 +158,7 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				message := "Running compiler failed: " + err.Error()
-				status, err := json.Marshal(StatusFail{message})
+				status, err := json.Marshal(ResponseStatus{message})
 				if err == nil {
 					log.Println(message)
 					w.Write(status)
@@ -171,7 +172,7 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				message := "Result file does not exist"
-				status, err := json.Marshal(StatusFail{message})
+				status, err := json.Marshal(ResponseStatus{message})
 				if err == nil {
 					log.Println(message)
 					w.Write(status)
@@ -185,7 +186,7 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				message := "Reading result file failed"
-				status, err := json.Marshal(StatusFail{message})
+				status, err := json.Marshal(ResponseStatus{message})
 				if err == nil {
 					log.Println(message)
 					w.Write(status)
@@ -200,7 +201,7 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				message := "Parsing result file failed"
-				status, err := json.Marshal(StatusFail{message})
+				status, err := json.Marshal(ResponseStatus{message})
 				if err == nil {
 					log.Println(message)
 					w.Write(status)
@@ -218,7 +219,7 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 			} else {
 				w.WriteHeader(http.StatusInternalServerError)
 				message := "Converting result failed"
-				status, err := json.Marshal(StatusFail{message})
+				status, err := json.Marshal(ResponseStatus{message})
 				if err == nil {
 					log.Println(message)
 					w.Write(status)
@@ -231,7 +232,118 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		{
 			w.WriteHeader(http.StatusNotFound)
+			message := "Invalid method"
+			status, err := json.Marshal(ResponseStatus{message})
+			if err == nil {
+				log.Println(message)
+				w.Write(status)
+			} else {
+				writingStatusFailed(message)
+			}
 			break
+		}
+	}
+}
+
+func downloadedReleaseHandler(collections *Collections) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "POST":
+			{
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Access-Control-Allow-Origin", os.Getenv("ALLOWED_ORIGIN"))
+				w.Header().Set("Access-Control-Max-Age", "15")
+				var releaseDetails DownloadedReleaseDetails
+				json.NewDecoder(r.Body).Decode(&releaseDetails)
+				if releaseDetails.ConfirmationKey != os.Getenv("CONFIRMATION_KEY") {
+					w.WriteHeader(http.StatusNotAcceptable)
+					message := "Source not confirmed"
+					status, err := json.Marshal(ResponseStatus{message})
+					if err == nil {
+						log.Println(message)
+						w.Write(status)
+					} else {
+						writingStatusFailed(message)
+					}
+					return
+				}
+				var release LanguageRelease
+				rlsResult := collections.Releases.FindOne(context.TODO(), bson.M{"releaseID": releaseDetails.ReleaseID})
+				err := rlsResult.Decode(&release)
+				if err == nil {
+					var foundPlatform bool
+					var platformIndex int = 0
+					for i := 0; i < len(release.Files); i++ {
+						if release.Files[i].Id == releaseDetails.PlatformID {
+							foundPlatform = true
+							platformIndex = i
+						}
+					}
+					if foundPlatform {
+						updateRes, err := collections.Releases.UpdateOne(context.TODO(),
+							bson.M{"releaseID": releaseDetails.ReleaseID},
+							bson.M{"$inc": bson.M{"files." + fmt.Sprint(platformIndex) + ".downloads": 1}})
+						if err != nil || updateRes.ModifiedCount != 1 {
+							w.WriteHeader(http.StatusInternalServerError)
+							message := "Could not update release"
+							status, err := json.Marshal(ResponseStatus{message})
+							if err == nil {
+								log.Println(message)
+								w.Write(status)
+							} else {
+								writingStatusFailed(message)
+							}
+							return
+						} else {
+							w.WriteHeader(http.StatusOK)
+							message := "Updated release file download count successfully"
+							status, err := json.Marshal(ResponseStatus{message})
+							if err == nil {
+								log.Println(message)
+								w.Write(status)
+							} else {
+								writingStatusFailed(message)
+							}
+							return
+						}
+					} else {
+						w.WriteHeader(http.StatusNotFound)
+						message := "Platform not found"
+						status, err := json.Marshal(ResponseStatus{message})
+						if err == nil {
+							log.Println(message)
+							w.Write(status)
+						} else {
+							writingStatusFailed(message)
+						}
+						return
+					}
+				} else {
+					w.WriteHeader(http.StatusNotFound)
+					message := "No release found with ID"
+					status, err := json.Marshal(ResponseStatus{message})
+					if err == nil {
+						log.Println(message)
+						w.Write(status)
+					} else {
+						writingStatusFailed(message)
+					}
+					return
+				}
+			}
+		default:
+			{
+				w.WriteHeader(http.StatusNotFound)
+				message := "Invalid method"
+				status, err := json.Marshal(ResponseStatus{message})
+				if err == nil {
+					log.Println(message)
+					w.Write(status)
+				} else {
+					writingStatusFailed(message)
+				}
+				break
+			}
 		}
 	}
 }
