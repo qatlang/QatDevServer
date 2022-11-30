@@ -8,7 +8,8 @@ type Collections struct {
 }
 
 type LanguageRelease struct {
-	Version struct {
+	ReleaseID string `json:"releaseID"`
+	Version   struct {
 		Value        string `json:"value"`
 		IsPrerelease bool   `json:"isPrerelease"`
 		Prerelease   string `json:"prerelease"`
@@ -16,6 +17,7 @@ type LanguageRelease struct {
 	Title   string `json:"title"`
 	Content string `json:"content"`
 	Files   []struct {
+		Id           string `json:"id"`
 		Platform     string `json:"platform"`
 		Architecture string `json:"architecture"`
 		Downloads    int    `json:"downloads"`
@@ -55,6 +57,12 @@ type Problem struct {
 	Range   FileRange `json:"range"`
 }
 
+type DownloadedReleaseDetails struct {
+	ConfirmationKey string `json:"confirmationKey"`
+	ReleaseID       string `json:"releaseID"`
+	PlatformID      string `json:"platformID"`
+}
+
 type SystemCompileResult struct {
 	Problems  []Problem `json:"problems"`
 	Status    bool      `json:"status"`
@@ -63,6 +71,6 @@ type SystemCompileResult struct {
 	HasMain   bool      `json:"hasMain"`
 }
 
-type StatusFail struct {
+type ResponseStatus struct {
 	Status string `json:"status"`
 }
