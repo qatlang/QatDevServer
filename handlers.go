@@ -168,7 +168,7 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 				os.RemoveAll(dir)
 				return
 			}
-			_, err = os.Stat(path.Join(dir, "build", "qat_result.json"))
+			_, err = os.Stat(path.Join(dir, "build", "QatCompilationResult.json"))
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				message := "Result file does not exist"
@@ -182,7 +182,7 @@ func compileHandler(w http.ResponseWriter, r *http.Request) {
 				os.RemoveAll(dir)
 				return
 			}
-			resContent, err := os.ReadFile(path.Join(dir, "build", "qat_result.json"))
+			resContent, err := os.ReadFile(path.Join(dir, "build", "QatCompilationResult.json"))
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				message := "Reading result file failed"
