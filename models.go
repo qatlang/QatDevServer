@@ -5,6 +5,7 @@ import "go.mongodb.org/mongo-driver/mongo"
 type Collections struct {
 	Updates  *mongo.Collection
 	Releases *mongo.Collection
+	Commits  *mongo.Collection
 }
 
 type LanguageRelease struct {
