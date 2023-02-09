@@ -64,6 +64,25 @@ type DownloadedReleaseDetails struct {
 	PlatformID      string `json:"platformID"`
 }
 
+type PushedCommits struct {
+	ConfirmationKey string      `json:"confirmationKey"`
+	Commits         []NewCommit `json:"commits"`
+}
+
+type NewCommit struct {
+	Id      string `json:"id"`
+	Title   string `json:"title"`
+	Message string `json:"message"`
+	Author  struct {
+		Name  string `json:"name"`
+		Email string `json:"email,omitempty"`
+	}
+	Repository string `json:"repository"`
+	Site       string `json:"site"`
+	Timestamp  string `json:"timestamp"`
+	Ref        string `json:"ref"`
+}
+
 type SystemCompileResult struct {
 	Problems  []Problem `json:"problems"`
 	Status    bool      `json:"status"`
