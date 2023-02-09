@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func releaseListHandler(collections *Collections) http.HandlerFunc {
@@ -321,6 +322,107 @@ func downloadedReleaseHandler(collections *Collections) http.HandlerFunc {
 				} else {
 					w.WriteHeader(http.StatusNotFound)
 					message := "No release found with ID"
+					status, err := json.Marshal(ResponseStatus{message})
+					if err == nil {
+						log.Println(message)
+						w.Write(status)
+					} else {
+						writingStatusFailed(message)
+					}
+					return
+				}
+			}
+		default:
+			{
+				w.WriteHeader(http.StatusNotFound)
+				message := "Invalid method"
+				status, err := json.Marshal(ResponseStatus{message})
+				if err == nil {
+					log.Println(message)
+					w.Write(status)
+				} else {
+					writingStatusFailed(message)
+				}
+				break
+			}
+		}
+	}
+}
+
+func latestCommitHandler(collections *Collections) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			{
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Access-Control-Allow-Origin", os.Getenv("ALLOWED_ORIGIN"))
+				w.Header().Set("Access-Control-Max-Age", "15")
+				var LimitVal int64 = 1
+				cursor, err := collections.Commits.Find(context.TODO(), bson.M{}, &options.FindOptions{Limit: &LimitVal, Sort: bson.M{"$natural": -1}})
+				if err == nil {
+					var item NewCommit
+					for cursor.Next(context.TODO()) {
+						var itemBson bson.D
+						if err := cursor.Decode(&itemBson); err != nil {
+							w.WriteHeader(http.StatusInternalServerError)
+							message := "Error retrieving the latest commit from the fetched data"
+							status, err := json.Marshal(ResponseStatus{message})
+							if err == nil {
+								log.Println(message)
+								w.Write(status)
+							} else {
+								writingStatusFailed(message)
+							}
+							return
+						} else {
+							itemBytes, err := bson.Marshal(itemBson)
+							if err != nil {
+								w.WriteHeader(http.StatusInternalServerError)
+								message := "Error converting latest commit BSON data to bytes"
+								status, err := json.Marshal(ResponseStatus{message})
+								if err == nil {
+									log.Println(message)
+									w.Write(status)
+								} else {
+									writingStatusFailed(message)
+								}
+								return
+							}
+							err = bson.Unmarshal(itemBytes, &item)
+							if err != nil {
+								w.WriteHeader(http.StatusInternalServerError)
+								message := "Error converting bytes to latest commit data"
+								status, err := json.Marshal(ResponseStatus{message})
+								if err == nil {
+									log.Println(message)
+									w.Write(status)
+								} else {
+									writingStatusFailed(message)
+								}
+								return
+							}
+							break
+						}
+					}
+					itemBytes, err := json.Marshal(item)
+					if err != nil {
+						w.WriteHeader(http.StatusInternalServerError)
+						message := "Error converting latest commit data to JSON bytes"
+						status, err := json.Marshal(ResponseStatus{message})
+						if err == nil {
+							log.Println(message)
+							w.Write(status)
+						} else {
+							writingStatusFailed(message)
+						}
+						return
+					}
+					w.WriteHeader(http.StatusOK)
+					w.Write(itemBytes)
+					return
+				} else {
+					w.WriteHeader(http.StatusInternalServerError)
+					message := "Error while looking for the latest commit"
 					status, err := json.Marshal(ResponseStatus{message})
 					if err == nil {
 						log.Println(message)
