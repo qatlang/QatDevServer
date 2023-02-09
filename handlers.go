@@ -347,3 +347,91 @@ func downloadedReleaseHandler(collections *Collections) http.HandlerFunc {
 		}
 	}
 }
+
+func newCommitsHandler(collections *Collections) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "POST":
+			{
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Access-Control-Allow-Origin", os.Getenv("ALLOWED_ORIGIN"))
+				w.Header().Set("Access-Control-Max-Age", "15")
+				var newCommitDetails PushedCommits
+				err := json.NewDecoder(r.Body).Decode(&newCommitDetails)
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					message := "Could not convert request body to JSON"
+					status, err := json.Marshal(ResponseStatus{message})
+					if err == nil {
+						log.Println(message)
+						w.Write(status)
+					} else {
+						writingStatusFailed(message)
+					}
+					return
+				}
+				if newCommitDetails.ConfirmationKey != os.Getenv("CONFIRMATION_KEY") {
+					w.WriteHeader(http.StatusNotAcceptable)
+					message := "Source not confirmed"
+					status, err := json.Marshal(ResponseStatus{message})
+					if err == nil {
+						log.Println(message)
+						w.Write(status)
+					} else {
+						writingStatusFailed(message)
+					}
+					return
+				}
+				var commitVals bson.A
+				for i := 0; i < len(newCommitDetails.Commits); i++ {
+					commitVals = append(commitVals, bson.M{
+						"id":         newCommitDetails.Commits[i].Id,
+						"title":      newCommitDetails.Commits[i].Title,
+						"message":    newCommitDetails.Commits[i].Message,
+						"author":     newCommitDetails.Commits[i].Author,
+						"repository": newCommitDetails.Commits[i].Repository,
+						"site":       newCommitDetails.Commits[i].Site,
+						"timestamp":  newCommitDetails.Commits[i].Timestamp,
+						"ref":        newCommitDetails.Commits[i].Ref,
+					})
+				}
+				_, err = collections.Commits.InsertMany(context.TODO(), commitVals)
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					message := "Could not add commits to the database"
+					status, err := json.Marshal(ResponseStatus{message})
+					if err == nil {
+						log.Println(message)
+						w.Write(status)
+					} else {
+						writingStatusFailed(message)
+					}
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+				message := "Added commits successfully"
+				status, err := json.Marshal(ResponseStatus{message})
+				if err == nil {
+					log.Println(message)
+					w.Write(status)
+				} else {
+					writingStatusFailed(message)
+				}
+				return
+			}
+		default:
+			{
+				w.WriteHeader(http.StatusNotFound)
+				message := "Invalid method"
+				status, err := json.Marshal(ResponseStatus{message})
+				if err == nil {
+					log.Println(message)
+					w.Write(status)
+				} else {
+					writingStatusFailed(message)
+				}
+				break
+			}
+		}
+	}
+}
