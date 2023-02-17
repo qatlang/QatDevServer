@@ -537,3 +537,57 @@ func newCommitsHandler(collections *Collections) http.HandlerFunc {
 		}
 	}
 }
+
+func releaseCountHandler(collections *Collections) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			{
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Access-Control-Allow-Origin", os.Getenv("ALLOWED_ORIGIN"))
+				w.Header().Set("Access-Control-Max-Age", "15")
+				count, err := collections.Releases.CountDocuments(context.TODO(), bson.M{})
+				if err == nil {
+					res, err := json.Marshal(CommitCount{Count: count})
+					if err == nil {
+						w.WriteHeader(http.StatusOK)
+						w.Write(res)
+					} else {
+						w.WriteHeader(http.StatusInternalServerError)
+						message := "Could not create JSON for commit count data"
+						status, err := json.Marshal(ResponseStatus{message})
+						if err == nil {
+							log.Println(message)
+							w.Write(status)
+						} else {
+							writingStatusFailed(message)
+						}
+					}
+				} else {
+					w.WriteHeader(http.StatusInternalServerError)
+					message := "Could not retrieve number of releases"
+					status, err := json.Marshal(ResponseStatus{message})
+					if err == nil {
+						log.Println(message)
+						w.Write(status)
+					} else {
+						writingStatusFailed(message)
+					}
+				}
+				break
+			}
+		default:
+			{
+				w.WriteHeader(http.StatusNotFound)
+				message := "Invalid method"
+				status, err := json.Marshal(ResponseStatus{message})
+				if err == nil {
+					log.Println(message)
+					w.Write(status)
+				} else {
+					writingStatusFailed(message)
+				}
+			}
+		}
+	}
+}

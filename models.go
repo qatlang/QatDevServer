@@ -83,6 +83,10 @@ type NewCommit struct {
 	Ref        string `json:"ref"`
 }
 
+type CommitCount struct {
+	Count int64 `json:"count"`
+}
+
 type SystemCompileResult struct {
 	Problems  []Problem `json:"problems"`
 	Status    bool      `json:"status"`

@@ -33,6 +33,7 @@ func main() {
 	r.HandleFunc("/downloadedRelease", downloadedReleaseHandler(&collections))
 	r.HandleFunc("/newCommits", newCommitsHandler(&collections))
 	r.HandleFunc("/latestCommit", latestCommitHandler(&collections))
+	r.HandleFunc("/releaseCount", releaseCountHandler(&collections))
 	err = http.ListenAndServe(os.Getenv("HOST")+":"+os.Getenv("PORT"), r)
 	log.Println("Server connection failed")
 	panic(err)
