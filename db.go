@@ -20,5 +20,6 @@ func ConnectDB(collections *Collections) {
 	collections.Releases = db.Collection(os.Getenv("RELEASES_COLLECTION"))
 	collections.Updates = db.Collection(os.Getenv("UPDATES_COLLECTION"))
 	collections.Commits = db.Collection(os.Getenv("COMMITS_COLLECTION"))
+	collections.Config = db.Collection(os.Getenv("CONFIG_COLLECTION"))
 	log.Println("Got all database collections")
 }

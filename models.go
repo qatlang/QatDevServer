@@ -6,6 +6,20 @@ type Collections struct {
 	Updates  *mongo.Collection
 	Releases *mongo.Collection
 	Commits  *mongo.Collection
+	Config   *mongo.Collection
+}
+
+type WakatimeConfig struct {
+	AccessToken  string `json:"accessToken" bson:"accessToken"`
+	RefreshToken string `json:"refreshToken" bson:"refreshToken"`
+	ExpiresAt    string `json:"expiresAt" bson:"expiresAt"`
+	ClientSecret string `json:"clientSecret" bson:"clientSecret"`
+	ClientID     string `json:"clientID" bson:"clientID"`
+	RefreshURL   string `json:"refreshURL" bson:"refreshURL"`
+}
+
+type ServerConfig struct {
+	Wakatime WakatimeConfig `json:"wakatime" bson:"wakatime"`
 }
 
 type LanguageRelease struct {
