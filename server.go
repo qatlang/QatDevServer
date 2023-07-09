@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -25,7 +25,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error occured loading environment variables: %s", err)
 	}
-	r := mux.NewRouter()
+	r := gin.Default()
 	var collections Collections
 	ConnectDB(&collections)
 	dur := time.Duration(4 * time.Hour)
@@ -110,13 +110,15 @@ func main() {
 	} else {
 		os.RemoveAll(path.Join(os.Args[1], os.Getenv("COMPILE_DIR")))
 	}
-	r.HandleFunc("/compile", compileHandler)
-	r.HandleFunc("/releases", releaseListHandler(&collections))
-	r.HandleFunc("/downloadedRelease", downloadedReleaseHandler(&collections))
-	r.HandleFunc("/newCommits", newCommitsHandler(&collections))
-	r.HandleFunc("/latestCommit", latestCommitHandler(&collections))
-	r.HandleFunc("/releaseCount", releaseCountHandler(&collections))
-	err = http.ListenAndServe(os.Getenv("HOST")+":"+os.Getenv("PORT"), r)
-	log.Println("Server connection failed")
-	panic(err)
+	r.POST("/compile", compileHandler)
+	r.GET("/releases", releaseListHandler(&collections))
+	r.POST("/downloadedRelease", downloadedReleaseHandler(&collections))
+	r.POST("/newCommits", newCommitsHandler(&collections))
+	r.GET("/latestCommit", latestCommitHandler(&collections))
+	r.GET("/releaseCount", releaseCountHandler(&collections))
+	err = r.Run(os.Getenv("HOST") + ":" + os.Getenv("PORT"))
+	if err != nil {
+		log.Println("Server connection failed")
+		panic(err)
+	}
 }
