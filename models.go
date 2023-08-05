@@ -112,3 +112,33 @@ type SystemCompileResult struct {
 type ResponseStatus struct {
 	Status string `json:"status"`
 }
+
+type ProjectStats struct {
+	Data struct {
+		Decimal           string  `json:"decimal"`
+		Digital           string  `json:"digital"`
+		IsUpToDate        bool    `json:"is_up_to_date"`
+		PercentCalculated float64 `json:"percent_calculated"`
+		Project           string  `json:"project"`
+		Range             struct {
+			End       string `json:"end"`
+			EndDate   string `json:"end_date"`
+			EndText   string `json:"end_text"`
+			Start     string `json:"start"`
+			StartDate string `json:"start_date"`
+			StartText string `json:"start_text"`
+			Timezone  string `json:"timezone"`
+		} `json:"range"`
+		Text         string `json:"text"`
+		Timeout      int64  `json:"timeout"`
+		TotalSeconds int64  `json:"total_seconds"`
+	}
+}
+
+type AllStatsResult struct {
+	Compiler ProjectStats `json:"compiler"`
+	Website  ProjectStats `json:"website"`
+	Server   ProjectStats `json:"server"`
+	VSCode   ProjectStats `json:"vscode"`
+	Docs     ProjectStats `json:"docs"`
+}

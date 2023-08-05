@@ -1,14 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"path"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -301,6 +304,88 @@ func releaseCountHandler(collections *Collections) gin.HandlerFunc {
 			c.JSON(http.StatusOK, CommitCount{Count: count})
 		} else {
 			message := "Could not retrieve number of releases"
+			log.Println(message)
+			c.JSON(http.StatusInternalServerError, ResponseStatus{message})
+		}
+	}
+}
+
+func projectStatsHandler(collections *Collections) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", os.Getenv("ALLOWED_ORIGIN"))
+		c.Header("Access-Control-Max-Age", "15")
+		serverConfigRes := collections.Commits.FindOne(context.Background(), bson.M{})
+		var config ServerConfig
+		err := serverConfigRes.Decode(config)
+		if err == nil {
+			wakatimeBaseUrl := "https://wakatime.com/api/v1/users/current/all_time_since_today?project="
+			var allStats AllStatsResult
+			var reqBytes []byte
+			client := http.Client{Timeout: 30 * time.Second}
+			projectHandler := func(projectName string) (*ProjectStats, error) {
+				projectRequest, err := http.NewRequestWithContext(context.Background(), http.MethodGet, wakatimeBaseUrl+projectName, bytes.NewReader(reqBytes))
+				if err != nil {
+					message := "could not create request for stats of the compiler project"
+					log.Println(message)
+					return nil, errors.New(message)
+				}
+				projectRequest.Header.Set("Authorization", "Bearer "+config.Wakatime.AccessToken)
+				projectRequest.Header.Set("Access-Control-Origin-Policy", "*")
+				resp, err := client.Do(projectRequest)
+				if err != nil {
+					message := "error making request for stats of the compiler project"
+					log.Println(message)
+					return nil, errors.New(message)
+				}
+				var resBytes []byte
+				_, err = resp.Body.Read(resBytes)
+				if err != nil {
+					message := "error reading response for stats of the compiler project"
+					log.Println(message)
+					return nil, errors.New(message)
+				}
+				result := new(ProjectStats)
+				err = json.Unmarshal(resBytes, result)
+				if err != nil {
+					message := "error decoding stats of the compiler project to JSON"
+					log.Println(message)
+					return nil, errors.New(message)
+				}
+				return result, nil
+			}
+			compilerProjectStats, err := projectHandler("qat")
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, ResponseStatus{err.Error()})
+				return
+			}
+			siteProjectStats, err := projectHandler("qatdev")
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, ResponseStatus{err.Error()})
+				return
+			}
+			serverProjectStats, err := projectHandler("QatDevServer")
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, ResponseStatus{err.Error()})
+				return
+			}
+			vscodeExtProjectStats, err := projectHandler("qat_vscode")
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, ResponseStatus{err.Error()})
+				return
+			}
+			docsProjectStats, err := projectHandler("QatDocs")
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, ResponseStatus{err.Error()})
+				return
+			}
+			allStats.Compiler = *compilerProjectStats
+			allStats.Website = *siteProjectStats
+			allStats.Server = *serverProjectStats
+			allStats.VSCode = *vscodeExtProjectStats
+			allStats.Docs = *docsProjectStats
+			c.JSON(http.StatusOK, allStats)
+		} else {
+			message := "Could not decode server config"
 			log.Println(message)
 			c.JSON(http.StatusInternalServerError, ResponseStatus{message})
 		}

@@ -116,6 +116,7 @@ func main() {
 	r.POST("/newCommits", newCommitsHandler(&collections))
 	r.GET("/latestCommit", latestCommitHandler(&collections))
 	r.GET("/releaseCount", releaseCountHandler(&collections))
+	r.GET("/projectStats", projectStatsHandler(&collections))
 	err = r.Run(os.Getenv("HOST") + ":" + os.Getenv("PORT"))
 	if err != nil {
 		log.Println("Server connection failed")
