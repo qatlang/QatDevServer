@@ -1,11 +1,11 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -53,9 +53,16 @@ func compileHandler(c *gin.Context) {
 	c.Header("Access-Control-Allow-Origin", os.Getenv("ALLOWED_ORIGIN"))
 	c.Header("Access-Control-Max-Age", "15")
 	var qatFile NewCompileFile
-	err := c.BindJSON(qatFile)
+	compReq, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		message := "Error decoding request body"
+		message := "Error reading request body with error: " + err.Error()
+		log.Println(message)
+		c.JSON(http.StatusBadRequest, ResponseStatus{message})
+		return
+	}
+	err = json.Unmarshal(compReq, &qatFile)
+	if err != nil {
+		message := "Could not decode request body to JSON with error: " + err.Error()
 		log.Println(message)
 		c.JSON(http.StatusBadRequest, ResponseStatus{message})
 		return
@@ -111,7 +118,7 @@ func compileHandler(c *gin.Context) {
 		os.RemoveAll(dir)
 		return
 	}
-	_, err = os.Stat(path.Join(dir, "build", "QatCompilationResult.json"))
+	_, err = os.Stat(path.Join(buildDir, "QatCompilationResult.json"))
 	if err != nil {
 		message := "Result file does not exist"
 		log.Println(message)
@@ -119,7 +126,7 @@ func compileHandler(c *gin.Context) {
 		os.RemoveAll(dir)
 		return
 	}
-	resContent, err := os.ReadFile(path.Join(dir, "build", "QatCompilationResult.json"))
+	resContent, err := os.ReadFile(path.Join(buildDir, "QatCompilationResult.json"))
 	if err != nil {
 		message := "Reading result file failed"
 		log.Println(message)
@@ -137,8 +144,8 @@ func compileHandler(c *gin.Context) {
 		return
 	}
 	if err == nil {
-		log.Println("Writing final result")
-		c.JSON(http.StatusOK, resContent)
+		log.Println("Writing final result:", sysCompRes)
+		c.JSON(http.StatusOK, sysCompRes)
 		os.RemoveAll(dir)
 		return
 	} else {
@@ -154,9 +161,16 @@ func downloadedReleaseHandler(collections *Collections) gin.HandlerFunc {
 		c.Header("Access-Control-Allow-Origin", os.Getenv("ALLOWED_ORIGIN"))
 		c.Header("Access-Control-Max-Age", "15")
 		var releaseDetails DownloadedReleaseDetails
-		err := c.BindJSON(releaseDetails)
+		relDet, err := io.ReadAll(c.Request.Body)
 		if err != nil {
-			message := "Error decoding request body"
+			message := "Error reading request body with error: " + err.Error()
+			log.Println(message)
+			c.JSON(http.StatusBadRequest, ResponseStatus{message})
+			return
+		}
+		err = json.Unmarshal(relDet, &releaseDetails)
+		if err != nil {
+			message := "Could not decode request body to JSON with error: " + err.Error()
 			log.Println(message)
 			c.JSON(http.StatusBadRequest, ResponseStatus{message})
 			return
@@ -258,9 +272,16 @@ func newCommitsHandler(collections *Collections) gin.HandlerFunc {
 		c.Header("Access-Control-Allow-Origin", os.Getenv("ALLOWED_ORIGIN"))
 		c.Header("Access-Control-Max-Age", "15")
 		var newCommitDetails PushedCommits
-		err := c.BindJSON(newCommitDetails)
+		newCommDet, err := io.ReadAll(c.Request.Body)
 		if err != nil {
-			message := "Could not convert request body to JSON"
+			message := "Error reading request body with error: " + err.Error()
+			log.Println(message)
+			c.JSON(http.StatusBadRequest, ResponseStatus{message})
+			return
+		}
+		err = json.Unmarshal(newCommDet, &newCommitDetails)
+		if err != nil {
+			message := "Could not decode request body to JSON with error: " + err.Error()
 			log.Println(message)
 			c.JSON(http.StatusInternalServerError, ResponseStatus{message})
 			return
@@ -314,16 +335,15 @@ func projectStatsHandler(collections *Collections) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", os.Getenv("ALLOWED_ORIGIN"))
 		c.Header("Access-Control-Max-Age", "15")
-		serverConfigRes := collections.Commits.FindOne(context.Background(), bson.M{})
+		serverConfigRes := collections.Config.FindOne(context.Background(), bson.M{})
 		var config ServerConfig
-		err := serverConfigRes.Decode(config)
+		err := serverConfigRes.Decode(&config)
 		if err == nil {
 			wakatimeBaseUrl := "https://wakatime.com/api/v1/users/current/all_time_since_today?project="
 			var allStats AllStatsResult
-			var reqBytes []byte
 			client := http.Client{Timeout: 30 * time.Second}
 			projectHandler := func(projectName string) (*ProjectStats, error) {
-				projectRequest, err := http.NewRequestWithContext(context.Background(), http.MethodGet, wakatimeBaseUrl+projectName, bytes.NewReader(reqBytes))
+				projectRequest, err := http.NewRequest(http.MethodGet, wakatimeBaseUrl+projectName, nil)
 				if err != nil {
 					message := "could not create request for stats of the compiler project"
 					log.Println(message)
@@ -337,8 +357,13 @@ func projectStatsHandler(collections *Collections) gin.HandlerFunc {
 					log.Println(message)
 					return nil, errors.New(message)
 				}
-				var resBytes []byte
-				_, err = resp.Body.Read(resBytes)
+				if resp.StatusCode != http.StatusOK {
+					message := "Wakatime request failed with status code: " + string(rune(resp.StatusCode))
+					log.Println(message)
+					return nil, errors.New(message)
+				}
+				resBytes, err := io.ReadAll(resp.Body)
+				defer resp.Body.Close()
 				if err != nil {
 					message := "error reading response for stats of the compiler project"
 					log.Println(message)
@@ -349,6 +374,7 @@ func projectStatsHandler(collections *Collections) gin.HandlerFunc {
 				if err != nil {
 					message := "error decoding stats of the compiler project to JSON"
 					log.Println(message)
+					log.Println(err.Error())
 					return nil, errors.New(message)
 				}
 				return result, nil

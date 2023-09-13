@@ -67,9 +67,10 @@ type FileRange struct {
 }
 
 type Problem struct {
-	IsError bool      `json:"isError"`
-	Message string    `json:"message"`
-	Range   FileRange `json:"range"`
+	IsError  bool      `json:"isError"`
+	Message  string    `json:"message"`
+	HasRange bool      `json:"hasRange"`
+	Range    FileRange `json:"range,omitempty"`
 }
 
 type DownloadedReleaseDetails struct {
@@ -102,11 +103,12 @@ type CommitCount struct {
 }
 
 type SystemCompileResult struct {
-	Problems  []Problem `json:"problems"`
-	Status    bool      `json:"status"`
-	QatTime   int       `json:"qatTime"`
-	ClangTime int       `json:"clangTime"`
-	HasMain   bool      `json:"hasMain"`
+	Problems        []Problem `json:"problems"`
+	Status          bool      `json:"status"`
+	CompilationTime int64     `json:"compilationTime"`
+	LinkingTime     int64     `json:"linkingTime"`
+	BinarySizes     []int64   `json:"binarySizes"`
+	HasMain         bool      `json:"hasMain"`
 }
 
 type ResponseStatus struct {
@@ -129,10 +131,10 @@ type ProjectStats struct {
 			StartText string `json:"start_text"`
 			Timezone  string `json:"timezone"`
 		} `json:"range"`
-		Text         string `json:"text"`
-		Timeout      int64  `json:"timeout"`
-		TotalSeconds int64  `json:"total_seconds"`
-	}
+		Text         string  `json:"text"`
+		Timeout      int64   `json:"timeout"`
+		TotalSeconds float64 `json:"total_seconds"`
+	} `json:"data"`
 }
 
 type AllStatsResult struct {
