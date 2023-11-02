@@ -404,11 +404,17 @@ func projectStatsHandler(collections *Collections) gin.HandlerFunc {
 				c.JSON(http.StatusInternalServerError, ResponseStatus{err.Error()})
 				return
 			}
+			tomProjectStats, err := projectHandler("tom")
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, ResponseStatus{err.Error()})
+				return
+			}
 			allStats.Compiler = *compilerProjectStats
 			allStats.Website = *siteProjectStats
 			allStats.Server = *serverProjectStats
 			allStats.VSCode = *vscodeExtProjectStats
 			allStats.Docs = *docsProjectStats
+			allStats.Tom = *tomProjectStats
 			c.JSON(http.StatusOK, allStats)
 		} else {
 			message := "Could not decode server config"

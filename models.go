@@ -143,4 +143,5 @@ type AllStatsResult struct {
 	Server   ProjectStats `json:"server"`
 	VSCode   ProjectStats `json:"vscode"`
 	Docs     ProjectStats `json:"docs"`
+	Tom      ProjectStats `json:"tom"`
 }
