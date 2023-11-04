@@ -67,10 +67,10 @@ type FileRange struct {
 }
 
 type Problem struct {
-	IsError  bool      `json:"isError"`
-	Message  string    `json:"message"`
-	HasRange bool      `json:"hasRange"`
-	Range    FileRange `json:"range,omitempty"`
+	IsError   bool      `json:"isError"`
+	Message   string    `json:"message"`
+	HasRange  bool      `json:"hasRange"`
+	FileRange FileRange `json:"fileRange,omitempty"`
 }
 
 type DownloadedReleaseDetails struct {
