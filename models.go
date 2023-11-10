@@ -32,11 +32,12 @@ type LanguageRelease struct {
 	Title   string `json:"title"`
 	Content string `json:"content"`
 	Files   []struct {
-		Id        string `json:"id"`
-		Platform  string `json:"platform"`
-		Target    string `json:"target"`
-		Downloads int    `json:"downloads"`
-		Path      string `json:"path"`
+		Id           string `json:"id"`
+		Platform     string `json:"platform"`
+		Target       string `json:"target"`
+		Architecture string `json:"architecture"`
+		Downloads    int    `json:"downloads"`
+		Path         string `json:"path"`
 	} `json:"files"`
 	Index     int    `json:"index"`
 	CreatedAt string `json:"createdAt"`
