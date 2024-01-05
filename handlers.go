@@ -358,7 +358,7 @@ func projectStatsHandler(collections *Collections) gin.HandlerFunc {
 					return nil, errors.New(message)
 				}
 				if resp.StatusCode != http.StatusOK {
-					message := "Wakatime request failed with status code: " + string(rune(resp.StatusCode))
+					message := "Wakatime request failed with status code: " + fmt.Sprintf("%d", resp.StatusCode)
 					log.Println(message)
 					return nil, errors.New(message)
 				}
